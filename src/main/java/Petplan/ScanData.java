@@ -10,12 +10,11 @@ public class ScanData {
 
     public ScanData() {
         scanner = new Scanner(System.in);
+        policy = new Policy();
+
     }
 
     public Policy scanAndGetPolicy() {
-
-        policy = new Policy();
-
         readPolicyScheme();
         readDeductible();
         readCopay();
@@ -26,6 +25,13 @@ public class ScanData {
         readState();
 
         return policy;
+    }
+
+    public String scanForRateDoc() {
+        System.out.print("Enter blueprint (18/19): ");
+        policy.setBlueprint(readValue(blueprints));
+
+        return policy.getBlueprint().trim();
     }
 
     private String checkValue(String[] array, String value) {

@@ -5,6 +5,7 @@ import lombok.Data;
 @Data
 public class Policy {
 
+    private String blueprint;
     private String policyScheme;
     private String deductible;
     private String copay;

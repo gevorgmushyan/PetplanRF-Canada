@@ -11,20 +11,30 @@ import static Petplan.PolicyPlan.*;
 public class CRF {
     public Policy policy;
     public MyExcel excel;
-    public String filePath = System.getProperty("user.dir") + "\\src\\main\\resources\\Blueprint - Canada (Rates) 20190703 1145 am.xlsx";
+    public static final String blueprint19 = "Blueprint - Canada (Rates) 20190703 1145 am.xlsx";
+    public static final String blueprint18 = "Blueprint - Canada (2018 Rates)_20181106 0905 am.xlsx";
+
+    public String filePath = System.getProperty("user.dir") + "\\src\\main\\resources\\";
 
     public CRF() {
+        ScanData scan = new ScanData();
+        String blueprint = scan.scanForRateDoc();
+
+        if(blueprint.equals("18"))
+            filePath = filePath + blueprint18;
+        else
+            filePath = filePath + blueprint19;
+
         Thread thread = new Thread("New Thread") {
             public void run() {
                 excel = new MyExcel(filePath);
             }
         };
         thread.start();
-        ScanData scan = new ScanData();
         policy = scan.scanAndGetPolicy();
     }
 
-    private int getBaseRateColunm() {
+    private int getBaseRateColumn() {
         for (int i = 0; i < baseRates.length; i++) {
             if (baseRates[i].toLowerCase().equals(policy.getPolicyScheme()))
                 if (policy.getPetType().equals(PetType.CAT))
@@ -52,7 +62,7 @@ public class CRF {
             System.out.println("Cannot fined state in sheet.");
             return;
         }
-        int j = getBaseRateColunm();
+        int j = getBaseRateColumn();
         if (j == -1) {
             System.out.println("Cannot fined scheme for pet in sheet.");
             return;
@@ -62,9 +72,16 @@ public class CRF {
     }
 
     private void showAgeFactor() {
+        if(policy.getBlueprint().equals("19"))
+            showAgeFactor_19();
+        else
+            showBreedAndAgeFactor_18();
+    }
+
+    private void showAgeFactor_19() {
         excel.openWorkSheet("Breed to Breed Grp Mapping 2019");
         String breedVal = this.policy.getPetType().equals(PetType.DOG) ? "ppdog001" : "ppcat001";
-        int i = excel.finedInColumn(1, policy.getBreed(), 2, breedVal, 1, 626);
+        int i = excel.finedInColumn(1, policy.getBreed(), 2, breedVal, 1, 628);
         if (i == -1) {
             System.out.println("Cannot fined breed in sheet.");
             return;
@@ -73,6 +90,28 @@ public class CRF {
         System.out.println("Pet group Id is: " + groupId);
 
         excel.openWorkSheet("Combined Breed Grp-Age Factors ");
+
+        int baseLine = excel.finedInColumn(0, policy.getPetType().toString(), 1, groupId, 8, 1067);
+        if (baseLine == -1) {
+            System.out.println("Cannot fined group Id for pet in sheet.");
+            return;
+        }
+
+        System.out.println("Age Factor: " + excel.readCell(baseLine + policy.getAge(), 3));
+    }
+
+    private void showBreedAndAgeFactor_18() {
+        excel.openWorkSheet("Breed");
+        String breedVal = this.policy.getPetType().equals(PetType.DOG) ? "ppdog001" : "ppcat001";
+        int i = excel.finedInColumn(1, policy.getBreed(), 2, breedVal, 1, 628);
+        if (i == -1) {
+            System.out.println("Cannot fined breed in sheet.");
+            return;
+        }
+        String groupId = excel.readCell(i, 4);
+        System.out.println("Pet group Id is: " + groupId);
+
+        excel.openWorkSheet("Age");
 
         int baseLine = excel.finedInColumn(0, policy.getPetType().toString(), 1, groupId, 8, 1067);
         if (baseLine == -1) {
@@ -93,9 +132,9 @@ public class CRF {
         areaLookup.put("SK", 2);
         areaLookup.put("AB", 4);
         areaLookup.put("BC", 3);
-        areaLookup.put("NU", 1);
-        areaLookup.put("NT", 1);
-        areaLookup.put("YT", 1);
+        areaLookup.put("NU", 4);
+        areaLookup.put("NT", 4);
+        areaLookup.put("YT", 4);
 
 
         if (policy.getState().trim().toUpperCase().equals("ON")
@@ -113,6 +152,10 @@ public class CRF {
             areaLookup.put("BC", 2);
         }
 
+        showLookupFactor(areaLookup);
+    }
+
+    private void showLookupFactor(Map<String, Integer> areaLookup) {
         int num = areaLookup.get(policy.getState().trim().toUpperCase());
         System.out.println("Pet area lookup is: " + num);
 
@@ -120,6 +163,39 @@ public class CRF {
         int deep = policy.getPetType().equals(PetType.CAT) ? 0 : 4;
         System.out.println("Pet Area Factor is: " +
                 excel.readCell(2 + num + deep, 2));
+    }
+
+    private void showAreaLookup_2018() {
+        Map<String, Integer> areaLookup = new HashMap();
+        areaLookup.put("NL", 2);
+        areaLookup.put("NS", 3);
+        areaLookup.put("PE", 4);
+        areaLookup.put("ON", 2);
+        areaLookup.put("MB", 3);
+        areaLookup.put("SK", 3);
+        areaLookup.put("AB", 1);
+        areaLookup.put("BC", 2);
+        areaLookup.put("NU", 1);
+        areaLookup.put("NT", 1);
+        areaLookup.put("YT", 1);
+
+
+        if (policy.getState().trim().toUpperCase().equals("ON")
+                && policy.getZipCode().trim().toUpperCase().startsWith("M")) {
+            areaLookup.put("ON", 1);
+        }
+
+        if (policy.getState().trim().toUpperCase().equals("AB")
+                && policy.getZipCode().trim().toUpperCase().startsWith("T0")) {
+            areaLookup.put("AB", 2);
+        }
+
+        if (policy.getState().trim().toUpperCase().equals("BC")
+                && policy.getZipCode().trim().toUpperCase().startsWith("V0")) {
+            areaLookup.put("BC", 3);
+        }
+
+        showLookupFactor(areaLookup);
     }
 
     private void showDeductibleFactor() {
